@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kin Marché | Admin Panel</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <style>
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .active-tab { border-bottom: 3px solid #e30613; color: #e30613; }
+        .btn-approve { background-color: #10b981; color: white; padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: bold; }
+        .btn-reject { background-color: #ef4444; color: white; padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: bold; }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans">
+
+    <!-- Header -->
+    <div class="bg-[#001529] text-white p-4 shadow-lg flex justify-between items-center">
+        <button onclick="window.location.href='dashboard.html'" class="text-white"><i class="fas fa-arrow-left"></i></button>
+        <h1 class="text-xl font-bold uppercase">Gestion Kin Marché</h1>
+        <div class="w-6"></div> 
+    </div>
+
+    <!-- Navigation Tabs -->
+    <div class="flex bg-white border-b sticky top-0 z-10">
+        <button onclick="showTab('withdrawals', this)" class="flex-1 p-4 font-bold text-gray-600 active-tab">RETRAITS</button>
+        <button onclick="showTab('recharges', this)" class="flex-1 p-4 font-bold text-gray-600">RECHARGES</button>
+    </div>
+
+    <div class="p-4 max-w-2xl mx-auto">
+        <!-- Section Retraits -->
+        <div id="withdrawals" class="tab-content active">
+            <h2 class="text-lg font-bold mb-4 text-gray-700">Demandes de Retrait</h2>
+            <div id="list-withdrawals" class="space-y-4">
+                <p class="text-gray-400 text-sm italic">Chargement...</p>
+            </div>
+        </div>
+
+        <!-- Section Recharges -->
+        <div id="recharges" class="tab-content">
+            <h2 class="text-lg font-bold mb-4 text-gray-700">Demandes de Recharge</h2>
+            <div id="list-recharges" class="space-y-4">
+                <p class="text-gray-400 text-sm italic">Chargement...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // CONFIGURATION FIREBASE
+        const firebaseConfig = { databaseURL: "https://firstsolar-e2ba3-default-rtdb.firebaseio.com/" };
+        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        function showTab(tabId, btn) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.flex button').forEach(b => b.classList.remove('active-tab'));
+            document.getElementById(tabId).classList.add('active');
+            btn.classList.add('active-tab');
+        }
+
+        // CHARGER LES RETRAITS
+        db.ref('withdraws').on('value', (snapshot) => {
+            const container = document.getElementById('list-withdrawals');
+            container.innerHTML = '';
+            const data = snapshot.val();
+            if (!data) { container.innerHTML = '<p class="text-center text-gray-400">Aucun retrait.</p>'; return; }
+
+            for (let id in data) {
+                const req = data[id];
+                container.innerHTML += `
+                    <div class="bg-white p-4 rounded-xl shadow border-l-4 border-red-500">
+                        <p class="font-bold text-lg">${req.amount} FC</p>
+                        <p class="text-xs text-blue-600">ID: ${req.userId}</p>
+                        <p class="text-sm text-gray-600 mt-2">Numéro: ${req.number}</p>
+                        <div class="flex gap-2 mt-3">
+                            <button onclick="handleAction('withdraws', '${id}', '${req.userId}', ${req.amount}, 'approve')" class="btn-approve flex-1 text-xs">PAYÉ</button>
+                            <button onclick="handleAction('withdraws', '${id}', '${req.userId}', ${req.amount}, 'reject')" class="btn-reject flex-1 text-xs">REJETER</button>
+                        </div>
+                    </div>`;
+            }
+        });
+
+        // CHARGER LES RECHARGES
+        db.ref('recharges').on('value', (snapshot) => {
+            const container = document.getElementById('list-recharges');
+            container.innerHTML = '';
+            const data = snapshot.val();
+            if (!data) { container.innerHTML = '<p class="text-center text-gray-400">Aucune recharge.</p>'; return; }
+
+            for (let id in data) {
+                const req = data[id];
+                container.innerHTML += `
+                    <div class="bg-white p-4 rounded-xl shadow border-l-4 border-green-500">
+                        <p class="font-bold text-lg">${req.amount} FC</p>
+                        <p class="text-xs text-blue-600">Client: ${req.userId}</p>
+                        <p class="text-sm text-gray-600">ID Trans: ${req.transactionId || 'N/A'}</p>
+                        <div class="flex gap-2 mt-3">
+                            <button onclick="handleAction('recharges', '${id}', '${req.userId}', ${req.amount}, 'approve')" class="btn-approve flex-1 text-xs">APPROUVER</button>
+                            <button onclick="handleAction('recharges', '${id}', '${req.userId}', ${req.amount}, 'reject')" class="btn-reject flex-1 text-xs">REJETER</button>
+                        </div>
+                    </div>`;
+            }
+        });
+
+        // GÉRER LES ACTIONS
+        async function handleAction(path, requestId, userId, amount, action) {
+            if (!confirm("Voulez-vous confirmer cette action ?")) return;
+
+            if (path === 'recharges' && action === 'approve') {
+                // Ajouter l'argent au solde
+                const ref = db.ref('users/' + userId + '/balance');
+                const snap = await ref.once('value');
+                const current = parseFloat(snap.val() || 0);
+                await ref.set(current + parseFloat(amount));
+                alert("Compte rechargé !");
+            } 
+            
+            if (path === 'withdraws' && action === 'reject') {
+                // Rembourser l'utilisateur si on rejette son retrait
+                const ref = db.ref('users/' + userId + '/balance');
+                const snap = await ref.once('value');
+                const current = parseFloat(snap.val() || 0);
+                await ref.set(current + parseFloat(amount));
+                alert("Retrait rejeté et remboursé !");
+            }
+
+            // Supprimer la demande de la liste
+            db.ref(path + '/' + requestId).remove();
+        }
+    </script>
+</body>
+</html>
