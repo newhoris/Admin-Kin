@@ -63,7 +63,7 @@
             btn.classList.add('active-tab');
         }
 
-        // CHARGER LES RETRAITS (Écoute le chemin exact: admin/withdrawals)
+        // CHARGER LES RETRAITS
         db.ref('admin/withdrawals').on('value', (snapshot) => {
             const container = document.getElementById('list-withdrawals');
             container.innerHTML = '';
@@ -73,12 +73,19 @@
             for (let id in data) {
                 const req = data[id];
                 const amountVal = req.amount || req.montant || 0;
+                const phoneVal = req.number || req.phone || req.sender || 'Non spécifié';
+                const transId = req.transactionId || req.ref || req.txId || 'N/A';
+
                 container.innerHTML += `
-                    <div class="bg-white p-4 rounded-xl shadow border-l-4 border-red-500">
-                        <p class="font-bold text-lg">${parseFloat(amountVal).toLocaleString('fr-FR')} FC</p>
-                        <p class="text-xs text-blue-600">ID: ${req.userId || 'Inconnu'}</p>
-                        <p class="text-sm text-gray-600 mt-2">Numéro: ${req.number || req.phone || 'N/A'}</p>
-                        <div class="flex gap-2 mt-3">
+                    <div class="bg-white p-4 rounded-xl shadow border-l-4 border-red-500 space-y-1">
+                        <div class="flex justify-between items-center">
+                            <span class="font-bold text-lg text-red-600">${parseFloat(amountVal).toLocaleString('fr-FR')} FC</span>
+                            <span class="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded font-mono">${req.date || req.createdAt || ''}</span>
+                        </div>
+                        <p class="text-xs text-blue-600 font-semibold">User ID: ${req.userId || 'Inconnu'}</p>
+                        <p class="text-sm text-gray-700"><strong>Numéro de réception:</strong> ${phoneVal}</p>
+                        <p class="text-sm text-gray-700"><strong>ID / Réf Trans:</strong> ${transId}</p>
+                        <div class="flex gap-2 mt-3 pt-2 border-t border-gray-100">
                             <button onclick="handleAction('admin/withdrawals', '${id}', '${req.userId}', ${amountVal}, 'approve')" class="btn-approve flex-1 text-xs">PAYÉ</button>
                             <button onclick="handleAction('admin/withdrawals', '${id}', '${req.userId}', ${amountVal}, 'reject')" class="btn-reject flex-1 text-xs">REJETER</button>
                         </div>
@@ -86,7 +93,7 @@
             }
         });
 
-        // CHARGER LES RECHARGES (Écoute le chemin exact: admin/recharges)
+        // CHARGER LES RECHARGES
         db.ref('admin/recharges').on('value', (snapshot) => {
             const container = document.getElementById('list-recharges');
             container.innerHTML = '';
@@ -96,12 +103,19 @@
             for (let id in data) {
                 const req = data[id];
                 const amountVal = req.amount || req.montant || 0;
+                const phoneVal = req.phone || req.number || req.sender || 'Non spécifié';
+                const transId = req.transactionId || req.ref || req.txId || 'N/A';
+
                 container.innerHTML += `
-                    <div class="bg-white p-4 rounded-xl shadow border-l-4 border-green-500">
-                        <p class="font-bold text-lg">${parseFloat(amountVal).toLocaleString('fr-FR')} FC</p>
-                        <p class="text-xs text-blue-600">Client: ${req.userId || 'Inconnu'}</p>
-                        <p class="text-sm text-gray-600">ID Trans / Réf: ${req.transactionId || req.ref || 'N/A'}</p>
-                        <div class="flex gap-2 mt-3">
+                    <div class="bg-white p-4 rounded-xl shadow border-l-4 border-green-500 space-y-1">
+                        <div class="flex justify-between items-center">
+                            <span class="font-bold text-lg text-green-600">${parseFloat(amountVal).toLocaleString('fr-FR')} FC</span>
+                            <span class="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded font-mono">${req.date || req.createdAt || ''}</span>
+                        </div>
+                        <p class="text-xs text-blue-600 font-semibold">Client ID: ${req.userId || 'Inconnu'}</p>
+                        <p class="text-sm text-gray-700"><strong>Numéro Expéditeur:</strong> ${phoneVal}</p>
+                        <p class="text-sm text-gray-700"><strong>ID / Réf Transfert:</strong> ${transId}</p>
+                        <div class="flex gap-2 mt-3 pt-2 border-t border-gray-100">
                             <button onclick="handleAction('admin/recharges', '${id}', '${req.userId}', ${amountVal}, 'approve')" class="btn-approve flex-1 text-xs">APPROUVER</button>
                             <button onclick="handleAction('admin/recharges', '${id}', '${req.userId}', ${amountVal}, 'reject')" class="btn-reject flex-1 text-xs">REJETER</button>
                         </div>
@@ -114,7 +128,6 @@
             if (!confirm("Voulez-vous confirmer cette action ?")) return;
 
             if (path === 'admin/recharges' && action === 'approve') {
-                // Ajouter l'argent au solde
                 const ref = db.ref('users/' + userId + '/balance');
                 const snap = await ref.once('value');
                 const current = parseFloat(snap.val() || 0);
@@ -123,7 +136,6 @@
             } 
             
             if (path === 'admin/withdrawals' && action === 'reject') {
-                // Rembourser l'utilisateur si le retrait est rejeté
                 const ref = db.ref('users/' + userId + '/balance');
                 const snap = await ref.once('value');
                 const current = parseFloat(snap.val() || 0);
@@ -131,7 +143,7 @@
                 alert("Retrait rejeté et remboursé !");
             }
 
-            // Supprimer la demande de la liste administrative
+            // Supprimer la demande traitée
             db.ref(path + '/' + requestId).remove();
         }
     </script>
