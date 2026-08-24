@@ -72,18 +72,20 @@
 
             for (let id in data) {
                 const req = data[id];
-                const amountVal = req.amount || req.montant || 0;
-                const phoneVal = req.number || req.phone || req.sender || 'Non spécifié';
-                const transId = req.transactionId || req.ref || req.txId || 'N/A';
+                const amountVal = req.montant || req.amount || 0;
+                const phoneVal = req.expediteur || req.number || req.phone || req.userPhone || 'Non spécifié';
+                const transId = req.transaction_id || req.transactionId || req.ref || 'N/A';
+                const dateVal = req.date ? new Date(req.date).toLocaleString('fr-FR') : '';
 
                 container.innerHTML += `
                     <div class="bg-white p-4 rounded-xl shadow border-l-4 border-red-500 space-y-1">
                         <div class="flex justify-between items-center">
                             <span class="font-bold text-lg text-red-600">${parseFloat(amountVal).toLocaleString('fr-FR')} FC</span>
-                            <span class="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded font-mono">${req.date || req.createdAt || ''}</span>
+                            <span class="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded font-mono">${dateVal}</span>
                         </div>
                         <p class="text-xs text-blue-600 font-semibold">User ID: ${req.userId || 'Inconnu'}</p>
-                        <p class="text-sm text-gray-700"><strong>Numéro de réception:</strong> ${phoneVal}</p>
+                        <p class="text-sm text-gray-700"><strong>Numéro:</strong> ${phoneVal}</p>
+                        <p class="text-sm text-gray-700"><strong>Réseau:</strong> ${req.reseau || 'N/A'}</p>
                         <p class="text-sm text-gray-700"><strong>ID / Réf Trans:</strong> ${transId}</p>
                         <div class="flex gap-2 mt-3 pt-2 border-t border-gray-100">
                             <button onclick="handleAction('admin/withdrawals', '${id}', '${req.userId}', ${amountVal}, 'approve')" class="btn-approve flex-1 text-xs">PAYÉ</button>
@@ -102,18 +104,20 @@
 
             for (let id in data) {
                 const req = data[id];
-                const amountVal = req.amount || req.montant || 0;
-                const phoneVal = req.phone || req.number || req.sender || 'Non spécifié';
-                const transId = req.transactionId || req.ref || req.txId || 'N/A';
+                const amountVal = req.montant || req.amount || 0;
+                const expediteurVal = req.expediteur || req.phone || req.userPhone || 'Non spécifié';
+                const transId = req.transaction_id || req.transactionId || req.ref || 'N/A';
+                const dateVal = req.date ? new Date(req.date).toLocaleString('fr-FR') : '';
 
                 container.innerHTML += `
                     <div class="bg-white p-4 rounded-xl shadow border-l-4 border-green-500 space-y-1">
                         <div class="flex justify-between items-center">
                             <span class="font-bold text-lg text-green-600">${parseFloat(amountVal).toLocaleString('fr-FR')} FC</span>
-                            <span class="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded font-mono">${req.date || req.createdAt || ''}</span>
+                            <span class="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded font-mono">${dateVal}</span>
                         </div>
                         <p class="text-xs text-blue-600 font-semibold">Client ID: ${req.userId || 'Inconnu'}</p>
-                        <p class="text-sm text-gray-700"><strong>Numéro Expéditeur:</strong> ${phoneVal}</p>
+                        <p class="text-sm text-gray-700"><strong>Expéditeur:</strong> ${expediteurVal}</p>
+                        <p class="text-sm text-gray-700"><strong>Réseau:</strong> ${req.reseau || 'N/A'}</p>
                         <p class="text-sm text-gray-700"><strong>ID / Réf Transfert:</strong> ${transId}</p>
                         <div class="flex gap-2 mt-3 pt-2 border-t border-gray-100">
                             <button onclick="handleAction('admin/recharges', '${id}', '${req.userId}', ${amountVal}, 'approve')" class="btn-approve flex-1 text-xs">APPROUVER</button>
@@ -132,7 +136,7 @@
                 const snap = await ref.once('value');
                 const current = parseFloat(snap.val() || 0);
                 await ref.set(current + parseFloat(amount));
-                alert("Compte rechargé !");
+                alert("Compte rechargé avec succès !");
             } 
             
             if (path === 'admin/withdrawals' && action === 'reject') {
@@ -140,7 +144,7 @@
                 const snap = await ref.once('value');
                 const current = parseFloat(snap.val() || 0);
                 await ref.set(current + parseFloat(amount));
-                alert("Retrait rejeté et remboursé !");
+                alert("Retrait rejeté et solde remboursé !");
             }
 
             // Supprimer la demande traitée
