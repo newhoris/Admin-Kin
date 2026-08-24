@@ -63,8 +63,8 @@
             btn.classList.add('active-tab');
         }
 
-        // CHARGER LES RETRAITS
-        db.ref('withdraws').on('value', (snapshot) => {
+        // CHARGER LES RETRAITS (Écoute le chemin exact: admin/withdrawals)
+        db.ref('admin/withdrawals').on('value', (snapshot) => {
             const container = document.getElementById('list-withdrawals');
             container.innerHTML = '';
             const data = snapshot.val();
@@ -72,21 +72,22 @@
 
             for (let id in data) {
                 const req = data[id];
+                const amountVal = req.amount || req.montant || 0;
                 container.innerHTML += `
                     <div class="bg-white p-4 rounded-xl shadow border-l-4 border-red-500">
-                        <p class="font-bold text-lg">${req.amount} FC</p>
-                        <p class="text-xs text-blue-600">ID: ${req.userId}</p>
-                        <p class="text-sm text-gray-600 mt-2">Numéro: ${req.number}</p>
+                        <p class="font-bold text-lg">${parseFloat(amountVal).toLocaleString('fr-FR')} FC</p>
+                        <p class="text-xs text-blue-600">ID: ${req.userId || 'Inconnu'}</p>
+                        <p class="text-sm text-gray-600 mt-2">Numéro: ${req.number || req.phone || 'N/A'}</p>
                         <div class="flex gap-2 mt-3">
-                            <button onclick="handleAction('withdraws', '${id}', '${req.userId}', ${req.amount}, 'approve')" class="btn-approve flex-1 text-xs">PAYÉ</button>
-                            <button onclick="handleAction('withdraws', '${id}', '${req.userId}', ${req.amount}, 'reject')" class="btn-reject flex-1 text-xs">REJETER</button>
+                            <button onclick="handleAction('admin/withdrawals', '${id}', '${req.userId}', ${amountVal}, 'approve')" class="btn-approve flex-1 text-xs">PAYÉ</button>
+                            <button onclick="handleAction('admin/withdrawals', '${id}', '${req.userId}', ${amountVal}, 'reject')" class="btn-reject flex-1 text-xs">REJETER</button>
                         </div>
                     </div>`;
             }
         });
 
-        // CHARGER LES RECHARGES
-        db.ref('recharges').on('value', (snapshot) => {
+        // CHARGER LES RECHARGES (Écoute le chemin exact: admin/recharges)
+        db.ref('admin/recharges').on('value', (snapshot) => {
             const container = document.getElementById('list-recharges');
             container.innerHTML = '';
             const data = snapshot.val();
@@ -94,14 +95,15 @@
 
             for (let id in data) {
                 const req = data[id];
+                const amountVal = req.amount || req.montant || 0;
                 container.innerHTML += `
                     <div class="bg-white p-4 rounded-xl shadow border-l-4 border-green-500">
-                        <p class="font-bold text-lg">${req.amount} FC</p>
-                        <p class="text-xs text-blue-600">Client: ${req.userId}</p>
-                        <p class="text-sm text-gray-600">ID Trans: ${req.transactionId || 'N/A'}</p>
+                        <p class="font-bold text-lg">${parseFloat(amountVal).toLocaleString('fr-FR')} FC</p>
+                        <p class="text-xs text-blue-600">Client: ${req.userId || 'Inconnu'}</p>
+                        <p class="text-sm text-gray-600">ID Trans / Réf: ${req.transactionId || req.ref || 'N/A'}</p>
                         <div class="flex gap-2 mt-3">
-                            <button onclick="handleAction('recharges', '${id}', '${req.userId}', ${req.amount}, 'approve')" class="btn-approve flex-1 text-xs">APPROUVER</button>
-                            <button onclick="handleAction('recharges', '${id}', '${req.userId}', ${req.amount}, 'reject')" class="btn-reject flex-1 text-xs">REJETER</button>
+                            <button onclick="handleAction('admin/recharges', '${id}', '${req.userId}', ${amountVal}, 'approve')" class="btn-approve flex-1 text-xs">APPROUVER</button>
+                            <button onclick="handleAction('admin/recharges', '${id}', '${req.userId}', ${amountVal}, 'reject')" class="btn-reject flex-1 text-xs">REJETER</button>
                         </div>
                     </div>`;
             }
@@ -111,7 +113,7 @@
         async function handleAction(path, requestId, userId, amount, action) {
             if (!confirm("Voulez-vous confirmer cette action ?")) return;
 
-            if (path === 'recharges' && action === 'approve') {
+            if (path === 'admin/recharges' && action === 'approve') {
                 // Ajouter l'argent au solde
                 const ref = db.ref('users/' + userId + '/balance');
                 const snap = await ref.once('value');
@@ -120,8 +122,8 @@
                 alert("Compte rechargé !");
             } 
             
-            if (path === 'withdraws' && action === 'reject') {
-                // Rembourser l'utilisateur si on rejette son retrait
+            if (path === 'admin/withdrawals' && action === 'reject') {
+                // Rembourser l'utilisateur si le retrait est rejeté
                 const ref = db.ref('users/' + userId + '/balance');
                 const snap = await ref.once('value');
                 const current = parseFloat(snap.val() || 0);
@@ -129,7 +131,7 @@
                 alert("Retrait rejeté et remboursé !");
             }
 
-            // Supprimer la demande de la liste
+            // Supprimer la demande de la liste administrative
             db.ref(path + '/' + requestId).remove();
         }
     </script>
